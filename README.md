@@ -4,6 +4,8 @@ CRUD DB Code Generator for Android & iOS
 The aim of this project is to generate basic CRUD code for both Android/iOS for local sqlite database access so that the code can be 
 shared between the 2 platforms.
 
+<img src="https://raw.github.com/thehung111/iosAndroidDBCodeGenerator/master/images/screenshot.png" width="600" />
+
 ## Setup
         	
 This application is developed using ExpressJS 3.0. 
