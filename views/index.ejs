@@ -1,0 +1,80 @@
+<% include header.ejs %>
+
+      <p>Generate fmdb wrapper for iOS and sqlite code for Android including Model Class &amp; CRUD operations</p>
+
+      <div>
+        
+
+      <div class="row-fluid">
+        <div class="span12">
+        
+    
+    <%
+    if(dbErr){
+	    %>
+	    
+	    <p class="error">Unable to open database at &quot;<i><%= dbPath %></i>&quot; . 
+	    <br/> Please change the database file path.</p>
+	    
+	    <%
+	
+    }
+    else{
+	    if(tables && tables.length > 0){
+		%>   
+		  
+		  	<p>Please select 1 table for code generation:</p>
+		  	 
+		  		<table class="table table-striped">
+		  		<tr><th>Name</th><th></th></tr>
+		   
+		<%    
+		  tables.forEach(function (row) {
+          	  
+          	  %>
+          	  	
+          	  	<tr>
+          	  		<td><%- row.tbl_name %></td>
+          	  		<td> <button class="btn detailBtn" type="button" tbName="<%- row.tbl_name %>">Select</button></td>
+          	  	</tr>
+          	  
+          	  <%
+          	  
+          });
+          
+          %>
+          
+              </table>
+          	
+          
+          <%
+		    
+	    }
+	    else{
+		    %>
+		    
+		    <div class="error">No tables found</div>
+		    
+		    <%
+	    }
+	    
+    }
+    %>
+    
+    
+    
+    
+    </div>
+   </div>
+
+   <script>
+   		$(document).ready(function(){
+	   		$('.detailBtn').click(function(){
+		   		location.href = '/viewTable/' + $(this).attr('tbName');
+	   		});	
+   		});
+   		
+   		
+   </script>
+   
+<% include footer.ejs %>

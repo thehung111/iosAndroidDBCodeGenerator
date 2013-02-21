@@ -1,0 +1,732 @@
+<% include header.ejs %>
+
+<form>
+
+      <blockquote> 
+      
+      <button class="btn btn-primary" type="button" id="generateModelBtn">Generate Model Class</button>
+      <button class="btn btn-primary" type="button" id="generateCRUDBtn">Generate CRUD</button>
+
+      <strong style="padding-left: 10px"><%= title %></strong> table
+      </blockquote> 
+      
+      <div class="alert fade in">
+            <button type="button" class="close" data-dismiss="alert">×</button>
+            Please select the primary key and the platform for code generation.
+      </div>
+      
+      
+      <div class="row-fluid">
+        <div class="span12">
+        
+        
+    <%
+    if(dbErr){
+	    %>
+	    
+	    <p class="error">Unable to open database at &quot;<i><%= dbPath %></i>&quot; . 
+	    <br/> Please change the database file path.</p>
+	    
+	    <%
+	
+    }
+    else{
+	    if(result && result.length > 0){
+		%>   
+		  
+		  <fieldset>
+              	<legend>Select Primary Key:</legend>
+
+		  		<table class="table table-striped" id="tableInfo">
+		  		<tr>
+		  			<th>PK</th>
+		  			<th>Column Name</th>
+		  			<th>Type</th>
+		  			<th>Generated Property Name</th>
+		  		</tr>
+		   
+		<%    
+		  result.forEach(function (row) {
+          	  
+          	  %>
+          	  	
+          	  	<tr class="columnTr">
+          	  		<td> <input type="radio" name="tablePk" value="<%- row.name %>"> </td>
+          	  		<td class="propName radioclickable"> <%- row.name %></td>
+          	  		<td class="propType radioclickable"> <%- row.type %> </td>
+          	  		
+          	  		<td class="propClassName"><input type="text" value="<%- row.name %>" /> </td>
+          	  	</tr>
+          	  
+          	  <%
+          	  
+          });
+          
+          %>
+          
+              </table>
+          </fieldset>  
+            
+          <fieldset>
+          		<legend>Select Platform:</legend>
+          		<label class="radio">
+				  <input type="radio" name="os" value="Android">
+				  Android
+				</label>
+				<label class="radio">
+				  <input type="radio" name="os" value="iOS">
+				  iOS
+				</label>
+      	  </fieldset>
+      	
+      	  <hr>
+      	
+      	            
+          <%
+		    
+	    }
+	    else{
+		    %>
+		    
+		    <div class="error">No columns found</div>
+		    
+		    <%
+	    }
+	    
+    }
+    %>
+
+<script>
+	var osChecked;
+	var pkChecked;
+	var dataTypeMapping = <%- dataTypeMappingStr %> ; // mapping for data type
+	
+	// camelcase java convention
+	// captilize the first letter for getter and setter
+	function camelStr(str)
+	{
+		if(str && str.length > 0)
+		{
+			var capitalized = str[0].toUpperCase() + str.substring(1);
+			return capitalized;
+		}
+		
+		return "";
+	}
+	
+	// simple validation check here
+	function checkSelected(){
+		osChecked = $('form input[name=os]:checked').val();
+		pkChecked = $('form input[name=tablePk]:checked').val();
+		
+		//alert("os: " + osChecked + ", pkChecked: " + pkChecked);
+		
+		if(osChecked && pkChecked)
+			return true;
+			
+		alert("Please select the platform and table PK");
+		return false;
+	}
+	
+	// retrieve type
+	function readPropType(propType){
+		if(!propType)
+			return "";
+	
+		if(propType.indexOf("NUMERIC") > -1 || propType.indexOf("INTEGER") > -1){
+			propType = "NUMERIC";
+		}
+		else if(propType.indexOf("REAL") > -1 ){
+			propType = "REAL";
+		}
+		else
+			propType = "TEXT";
+			
+		return propType;
+	}
+	
+	
+	// get the class propertyNames by the user from the forms
+	// store name, type into the array
+	function readPropArr(){
+		
+		var propArr = [] ;
+		
+		// first retrieve the properties
+		$('.columnTr').each(function(){
+			var curItem = $(this);
+			var propName = curItem.find('.propClassName input').val() || 'undefinedProp' ;
+			var colName  = curItem.find('.propName').text() || 'undefinedProp' ;
+			var propType = curItem.find('.propType').text().toUpperCase() || 'TEXT';
+			propType = readPropType(propType);
+			
+			
+			propArr.push( {name: $.trim(propName), propType: $.trim(propType), col: $.trim(colName) } );
+		});
+		
+		return propArr;
+	}
+	
+	
+	
+	
+	// generate android java model class
+	function generateAndroidModel()
+	{
+		var html =  $.trim( $('#androidModelTemplate').html() ) ;
+		html = html.replace(new RegExp("{{ClassName}}", "g") , '<%= title %>');
+		
+		var propArr = readPropArr();
+		var propertyDef = "";
+		
+		var getterSetter = "" ;
+		
+		var getterSetterTemplateStr =  $('#getterSetterTemplate').html() ;
+		
+		// generate all property declaration
+		// e.g. private String name;
+		propArr.forEach(function(item){
+			// e.g. NSString* whatever;
+			// indentation
+		    var definition = "    private " + dataTypeMapping[item.propType].android + " " + item.name + " ; \n" ;
+		    
+		    var str =  getterSetterTemplateStr.replace(new RegExp("{{propName}}", "g") , item.name );
+		    str = str.replace(new RegExp("{{propType}}", "g") , dataTypeMapping[item.propType].android );
+		    str = str.replace(new RegExp("{{CamelCasePropName}}", "g") , camelStr(item.name) );
+
+		    getterSetter += str ;
+		    
+		    getterSetter += "\n";
+		    
+			// declaration
+			propertyDef += definition;
+			
+		});
+		
+		html = html.replace("{{propertyDeclarations}}", propertyDef );
+		html = html.replace("{{getterSetter}}", getterSetter );
+		
+		
+		$('#androidModelModal textarea').html(html);
+		
+	}
+	
+	function generateContentValues(propArr)
+	{
+		// generate something like this
+		/*
+		values.put(USER_ID, entry.getUserId() );
+		values.put(NAME, entry.getName() );
+		values.put(HANDPHONE, entry.getHandphone() );
+		values.put(EMAIL, entry.getEmail() );
+		*/
+		
+		var str = "";
+		
+		propArr.forEach(function(item){
+		
+			var s = "    values.put(" + item.col.toUpperCase() + ", entry.get" +  camelStr(item.name) + "() ) ; \n";
+			str += s ;
+		});
+		
+		
+		return str;
+		
+		
+	}
+	
+	function generateAndroidRetrieveData(propArr)
+	{
+		// generate something like this
+		/*
+		int userId = c.getInt(0);
+		String name = c.getString(1);
+		int handphone = c.getInt(2);
+		String email = c.getString(3);
+			
+		entry.setUserId(userId);
+		entry.setName(name);
+		entry.setHandphone(handphone);
+		entry.setEmail(email);
+		*/
+
+
+		var str = "";
+		
+		var i = 0;
+		
+		propArr.forEach(function(item){
+			var dataType = item.propType ; 
+			var s = "    ";
+			
+			if(dataType == "TEXT" )
+			{
+				// generate 
+				// String name = c.getString(1);
+				s = dataTypeMapping[dataType].android + " " + item.name + " = c.getString(" + i + "); \n" ; 
+				
+			}
+			else if(dataType == "NUMERIC" )
+			{
+				s = dataTypeMapping[dataType].android + " " + item.name + " = c.getInt(" + i + "); \n" ; 
+				
+				
+			}
+			else if(dataType == "REAL" )
+			{
+				s = dataTypeMapping[dataType].android + " " + item.name + " = c.getFloat(" + i + "); \n" ; 
+				
+			}
+			s = s + "    entry.set" + camelStr(item.name) + "(" + item.name + "); \n";
+			
+			str += s ;
+			
+			i++;
+		});
+		
+		
+		return str;
+
+
+
+	}
+	
+	function generateAndroidCRUD()
+	{
+		var html =  $.trim( $('#androidCRUDTemplate').html() ) ;
+		
+		// currently class name that represent model is the same as database table
+		// in future probably allow generation for classes that have diff table name from model
+		html = html.replace(new RegExp("{{ClassName}}", "g") , '<%= title %>');
+		html = html.replace(new RegExp("{{TABLE_NAME}}", "g") , '<%= title %>');
+		
+		var propArr = readPropArr();
+		
+		var pkItem ;
+		
+		propArr.forEach(function(item){
+		   if(item.col == pkChecked) // primary column
+		    {
+			    pkItem = item;
+		    }
+			
+		});
+		
+		
+		// capitalize table name e.g. User --> USER
+		var capitalClassName = '<%= title %>'.toUpperCase();
+		
+		// generate --> USER_TABLE_NAME = "User";
+		html = html.replace(new RegExp("{{TABLE_NAME_CAPITAL}}", "g") , capitalClassName);
+		
+		// replace primary key related fields
+		html = html.replace(new RegExp("{{pkType}}", "g") , dataTypeMapping[pkItem.propType].android );
+		html = html.replace(new RegExp("{{pkCol}}", "g") , pkItem.name );
+		html = html.replace(new RegExp("{{pkDBCol}}", "g") , pkItem.col );
+		
+		var camelPKName = camelStr(pkItem.name);
+		html = html.replace(new RegExp("{{camelPkCol}}", "g") , camelPKName );
+		
+		// list of columns
+		var colArr = _.pluck(propArr, 'col');
+		
+		// generate the list of column names in the form of
+		// private static final String NAME = "name" ;
+		
+		var colNameDef = "" ;
+		colArr.forEach(function(item){
+			colNameDef = colNameDef + "    private static final String " + item.toUpperCase() + " = \"" + item + "\" ; \n" ;
+		});
+		
+		
+		html = html.replace(new RegExp("{{COLUMN_NAMES}}", "g") , colNameDef );
+		
+		
+		// generate USER_ID, NAME, EMAIL, HANDPHONE
+		upperColArr = _.map(colArr, function(item){ return item.toUpperCase() + " "; });
+		html = html.replace(new RegExp("{{TABLE_COL_LIST}}", "g") , upperColArr.join() );
+		
+		html = html.replace(new RegExp("{{CONTENT_VALUE_LIST}}", "g") , generateContentValues(propArr) );
+		
+		html = html.replace(new RegExp("{{RETRIEVE_DATA}}", "g") , generateAndroidRetrieveData(propArr) );
+		
+		
+		$('#androidCRUDModal textarea').html(html);
+	}
+	
+	// return something like 
+	// entry.userId = [results intForColumn:@"userId"]; when reading "userId" column
+	function getRetrieveStr(item)
+	{
+		var str = "    entry." + item.name + " = [results " ; // entry.userId = [results
+		var dataType = item.propType;
+		if(dataType == "TEXT")
+		{
+			str = str + "stringForColumn:@\"" + item.col + "\"]; " ; // stringForColumn:@"name"];
+		}
+		else if(dataType == "NUMERIC") 
+		{
+			str = str + "intForColumn:@\"" + item.col + "\"]; " ; // intForColumn:@"userId"];
+		}
+		else if(dataType == "REAL")
+		{
+			str = str + "doubleForColumn:@\"" + item.col + "\"]; " ; // doubleForColumn:@"userId"];
+		}
+		else // default to string
+		{
+			str = str + "stringForColumn:@\"" + item.col + "\"]; " ; // stringForColumn:@"name"];
+		}
+		
+		return str;
+	}
+	
+	function getObjectSQLStrFromDataType(item)
+	{
+		//console.log("item: " + JSON.stringify(item) );
+		return getObjectStrFromDataType(item);
+	}
+	
+	// return object representation
+	// e.g. [NSNumber numberWithInt:entry.userId ] if numeric
+	// entry.name if data type is string
+	function getObjectStrFromDataType(item, prefix)
+	{
+		// append the prefix
+		if(!prefix)
+			prefix = " entry.";
+			
+		//console.log("prefix: " + prefix);
+		
+		var dataType = item.propType;
+		if(dataType == "TEXT")
+		{
+			return prefix + item.name ; // generate something like entry.name
+		}
+		else if(dataType == "NUMERIC") 
+		// fmdb does not accept primitive type, we must generate the object
+		{
+			// generate something like [NSNumber numberWithInt:entry.userId ]
+			return " [NSNumber numberWithInt:" + prefix + item.name + "]" ;
+		}
+		else if(dataType == "REAL") 
+		// fmdb does not accept primitive type, we must generate the object
+		{
+			// generate something like [NSNumber numberWithInt:entry.userId ]
+			return " [NSNumber numberWithFloat:" + prefix + item.name + "]" ;
+		}
+		
+		
+		return prefix + item.name;  // default
+	}
+	
+	function generateIOSCRUD()
+	{
+		var html =  $.trim( $('#iosCRUDHeaderTemplate').html() ) ;
+		var impHTML = $.trim( $('#iosCRUDImpTemplate').html() ) ;
+		
+		// replace class name
+		html = html.replace(new RegExp("{{ClassName}}", "g") , '<%= title %>');
+		impHTML = impHTML.replace(new RegExp("{{ClassName}}", "g") , '<%= title %>');
+		
+		// currently, the class name must be the same as the table name
+		// future improvement would be to allow user to select a different class name from the table
+		impHTML = impHTML.replace(new RegExp("{{TABLE_NAME}}", "g") , '<%= title %>'); 
+		
+		
+		// get the primary column & data type
+		
+		
+		var propArr = readPropArr();
+		var pkItem ;
+		
+		var retrievalStr = "";
+		
+		propArr.forEach(function(item){
+			 
+		    
+		    //console.log("pkChecked " + pkChecked + ", col: " + item.col + ", equal : " + (item.col === pkChecked) );
+		    if(item.col == pkChecked) // primary column
+		    {
+			    pkItem = item;
+			    //console.log("pkItem set");
+		    }
+			
+			retrievalStr += getRetrieveStr(item); // eg. entry.name = results stringForColumn
+			retrievalStr += "\n" ;
+			
+			
+		});
+		
+		// list of columns
+		var colArr = _.pluck(propArr, 'col');
+		
+		
+		// list of ?, ? to be replaced for argument list
+		var questionArr = _.map(propArr, function(item){ return "?"; } );
+		
+		// generate [NSNumber numberWithInt:entry.userId ], entry.name, [NSNumber numberWithInt:entry.handphone], entry.email
+		// if numeric must map to corresponding object.. append the prefix accordingly
+		var insertValueArr = _.map(propArr, getObjectSQLStrFromDataType);
+		
+		
+		// for update the column list is without the primary key
+		var updateColListArr =  _.map( _.without(propArr, pkItem), function(item){ return item.col + " = ? "}   );
+		
+		// for update value list , the array need to include the primary key as the last item
+		var updateValueArr = _.map(_.without(propArr, pkItem).concat(pkItem), getObjectSQLStrFromDataType );
+		
+		
+		if(pkItem)
+		{
+			console.log("pk : " + pkItem.name + ", pk type: " + dataTypeMapping[pkItem.propType].ios );
+			
+			// substitue primary type and name
+			html = html.replace(new RegExp("{{pkType}}", "g") , dataTypeMapping[pkItem.propType].ios );
+			html = html.replace(new RegExp("{{pkCol}}", "g") , pkItem.name );
+			
+			impHTML = impHTML.replace(new RegExp("{{pkType}}", "g") , dataTypeMapping[pkItem.propType].ios );
+			impHTML = impHTML.replace(new RegExp("{{pkCol}}", "g") , pkItem.name );
+			impHTML = impHTML.replace(new RegExp("{{pkDBCol}}", "g") , pkItem.col );
+			
+			
+			
+			// generate the argument list for insert template
+			// check insert method for more details
+			impHTML = impHTML.replace(new RegExp("{{COL_LIST}}", "g") , colArr.join() );
+			impHTML = impHTML.replace(new RegExp("{{QUESTION_LIST}}", "g") , questionArr.join() );
+			impHTML = impHTML.replace(new RegExp("{{COL_VALUE_LIST}}", "g") , insertValueArr.join() );
+			
+			// update operation
+			impHTML = impHTML.replace(new RegExp("{{UPDATE_COL_LIST}}", "g") , updateColListArr.join() );
+			impHTML = impHTML.replace(new RegExp("{{UPDATE_COL_VALUE_LIST}}", "g") , updateValueArr.join() );
+			
+			
+			// delete operation
+			
+			// delete by pk
+			impHTML = impHTML.replace(new RegExp("{{PK_VALUE}}", "g") , getObjectStrFromDataType(pkItem, " ") );
+			
+			
+			// query retrieval data
+			impHTML = impHTML.replace(new RegExp("{{RETRIEVE_COL}}", "g") , retrievalStr );
+			
+		}
+		
+		$('#iOSCRUDModal textarea.headerCode').html(html);
+		$('#iOSCRUDModal textarea.implementationCode').html(impHTML);
+	}
+	
+	
+	// generate model source code (header and implementation file) for iOS
+	function generateIOSHeader(){
+		var html =  $.trim( $('#iosModelHeaderTemplate').html() ) ;
+		var impHTML = $.trim( $('#iosModelImpTemplate').html() ) ;
+
+		
+		// replace class name
+		html = html.replace(new RegExp("{{ClassName}}", "g") , '<%= title %>');
+		impHTML = impHTML.replace(new RegExp("{{ClassName}}", "g") , '<%= title %>');
+
+
+		var  internalPropDef = "" ;
+		
+		// generate property declaration, whether it is strong, weak, etc
+		var propertyDef = "";
+		
+		var propArr = readPropArr();
+		
+		propArr.forEach(function(item){
+			// e.g. NSString* whatever;
+			// indentation
+		    var definition = "    " + dataTypeMapping[item.propType].ios + " " + item.name + " ; \n" ;
+		    
+		    // e.g. @property(strong, nonatomic) NSString* whatever;
+		    // if int , float then must change strong to assign
+		    
+		    var declartion = (item.propType == "TEXT" ? "@property(strong, nonatomic) " : "@property(assign, nonatomic) " ) 
+		    				 + dataTypeMapping[item.propType].ios + " " + item.name + " ; \n" ;
+		    
+		    
+			// generate the internal properties
+			internalPropDef += definition;
+			
+			// declaration
+			propertyDef += declartion;
+			
+		});
+		
+		html = html.replace("{{internalProperties}}", internalPropDef );
+		html = html.replace("{{propertyDeclarations}}", propertyDef );
+		
+		
+		var nameArr = _.pluck(propArr, 'name');
+		
+		impHTML = impHTML.replace("{{propList}}", nameArr.join()) ;
+		
+		
+		$('#iOSModelModal textarea.headerCode').html(html);
+		$('#iOSModelModal textarea.implementationCode').html(impHTML);
+		
+		
+	}
+
+	$(document).ready(function(){
+		$('#tableInfo .columnTr .radioclickable').click(function(){
+			
+			$(this).parent().find('input').attr('checked', 'checked');
+		});
+		
+		
+		// user click on generate model button
+		$('#generateModelBtn').click(function(){
+			if(checkSelected())
+			{
+				
+				// read from template
+				if(osChecked == "iOS") // iphone handling
+				{
+					generateIOSHeader();
+					$('#iOSModelModal').modal('show'); // open dialog
+				}
+				else{
+					generateAndroidModel();
+					$('#androidModelModal').modal('show'); // open dialog
+					
+				}
+			}
+			
+		});
+		
+		
+		// crud generator
+		$('#generateCRUDBtn').click(function(){
+			if( checkSelected() )
+			{
+				if(osChecked == "iOS") // iphone handling
+				{
+					generateIOSCRUD();
+					$('#iOSCRUDModal').modal('show'); // open dialog
+				}
+				else{
+					generateAndroidCRUD();
+					$('#androidCRUDModal').modal('show'); // open dialog
+					
+				}				
+			
+			}
+		});
+		
+	});
+
+</script>
+        
+
+     
+        </div>
+      </div>
+
+
+
+
+
+<!-- start - modal dialog for ios model -->
+<div class="modal hide fade codeModal" id="iOSModelModal">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+    <h3>Generated iOS Model Code</h3>
+  </div>
+  <div class="modal-body">
+    	<textarea class="headerCode">Code</textarea>
+    
+    	<textarea class="implementationCode">Code</textarea>
+  </div>
+
+</div>
+<!-- end modal for ios model -->
+
+
+<!-- start - modal dialog for ios crud -->
+<div class="modal hide fade codeModal" id="iOSCRUDModal">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+    <h3>Generated iOS CRUD Code</h3>
+  </div>
+  <div class="modal-body">
+    	<textarea class="headerCode">Code</textarea>
+    
+    	<textarea class="implementationCode">Code</textarea>
+  </div>
+
+</div>
+<!-- end modal for ios crud -->
+
+
+<!-- start - modal dialog for android model -->
+<div class="modal hide fade codeModal" id="androidModelModal">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+    <h3>Generated Android Model Code</h3>
+  </div>
+  <div class="modal-body">
+    	<textarea class="headerCode">Code</textarea>
+  </div>
+
+</div>
+<!-- end modal for android model -->
+
+
+<!-- start - modal dialog for android crud -->
+<div class="modal hide fade codeModal" id="androidCRUDModal">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+    <h3>Generated Android CRUD Code</h3>
+  </div>
+  <div class="modal-body">
+    	<textarea class="headerCode">Code</textarea>
+  </div>
+
+</div>
+<!-- end modal for android crud -->
+
+
+
+</form>
+   
+   
+<!-- code templates -->
+<div id="iosModelHeaderTemplate" style="display:none">
+	<%= config.iosModelHeaderCode %>
+</div>
+   
+<div id="iosModelImpTemplate" style="display:none">
+	<%= config.iosModelImpCode %>
+</div>
+
+<div id="iosCRUDHeaderTemplate" style="display:none">
+	<%= config.iosCRUDHeaderCode %>
+</div>
+   
+<div id="iosCRUDImpTemplate" style="display:none">
+	<%= config.iosCRUDImpCode %>
+</div>
+   
+<div id="androidModelTemplate" style="display:none">
+	<%= config.androidModelCode %>
+</div>
+
+<div id="androidCRUDTemplate" style="display:none">
+	<%= config.androidCRUDCode %>
+</div>
+
+<div id="getterSetterTemplate" style="display:none">
+	public void set{{CamelCasePropName}}({{propType}} {{propName}} ) {
+		this.{{propName}} = {{propName}};
+	}
+
+	public {{propType}} get{{CamelCasePropName}}() {
+		return {{propName}};
+	}
+</div>
+   
+   
+<% include footer.ejs %>

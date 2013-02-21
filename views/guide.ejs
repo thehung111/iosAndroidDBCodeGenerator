@@ -1,0 +1,38 @@
+<% include header.ejs %>
+
+ <div class="row-fluid">
+        <div class="span12">
+        	<h4>Setup</h4>
+        	
+        	<p>This application is developed using ExpressJS 3.0. To setup: <p>
+        	
+        	1. First install Node.JS &amp; Express. <br/>
+        	2. Run the app with "node app.js" . <br/> 
+        	3. Access the server app via http://localhost:3000 after installing. <br/>
+        	
+        	
+        	<h4>Instructions</h4>
+
+        	
+        	<ol>
+        		<li>Create a SQLite Database.</li>
+        		<li>Update configuration path under config folder &gt; index.js. Update dbPath to point to the created database.</li>
+        		<li>The default test database is under db folder(test.db)</li>
+        		<li>Currently only supported TEXT/NUMERIC/REAL column data types generation. 
+        			There must not be spaces or special characters for the table and column names;
+        		</li>
+        		<li>This project generate <a href="https://github.com/ccgus/fmdb">fmdb</a> wrapper model/crud code for iOS, 
+        			and <a href="https://github.com/jgilfelt/android-sqlite-asset-helper">SQLiteAssetHelper</a> wrapper for Android.</li>
+        		<li>The code templates are put under the <b>template</b> folder. All special parameters are marked with {{template_Variable}} </li>	
+        			
+        		<li>Majority of the code generation is put under viewtable.ejs</li>
+        		
+        	</ol>
+        	
+        	
+        </div>
+ </div>
+
+
+
+<% include footer.ejs %>
