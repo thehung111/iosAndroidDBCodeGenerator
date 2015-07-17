@@ -133,10 +133,12 @@
 		if(!propType)
 			return "";
 	
-		if(propType.indexOf("NUMERIC") > -1 || propType.indexOf("INTEGER") > -1){
+		console.log('propType: ' + propType);
+	
+		if(propType.indexOf("NUMERIC") > -1 || propType.indexOf("INTEGER") > -1 || propType.indexOf("INT") > -1){
 			propType = "NUMERIC";
 		}
-		else if(propType.indexOf("REAL") > -1 ){
+		else if(propType.indexOf("REAL") > -1 || propType.indexOf("DOUBLE") > -1 || propType.indexOf("FLOAT") > -1 ){
 			propType = "REAL";
 		}
 		else
