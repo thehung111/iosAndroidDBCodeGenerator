@@ -225,9 +225,10 @@
 		
 		var str = "";
 		
+		var capitalClassName = '<%= title %>'.toUpperCase();
 		propArr.forEach(function(item){
 		
-			var s = "    values.put(" + item.col.toUpperCase() + ", entry.get" +  camelStr(item.name) + "() ) ; \n";
+			var s = "    values.put("+capitalClassName+"_" + item.col.toUpperCase() + ", entry.get" +  camelStr(item.name) + "() ) ; \n";
 			str += s ;
 		});
 		
@@ -337,7 +338,7 @@
 		
 		var colNameDef = "" ;
 		colArr.forEach(function(item){
-			colNameDef = colNameDef + "    private static final String " + item.toUpperCase() + " = \"" + item + "\" ; \n" ;
+			colNameDef = colNameDef + "    private static final String " +capitalClassName+"_"+ item.toUpperCase() + " = \"" + item + "\" ; \n" ;
 		});
 		
 		
@@ -345,7 +346,7 @@
 		
 		
 		// generate USER_ID, NAME, EMAIL, HANDPHONE
-		upperColArr = _.map(colArr, function(item){ return item.toUpperCase() + " "; });
+		upperColArr = _.map(colArr, function(item){ return capitalClassName+"_"+item.toUpperCase() + " "; });
 		html = html.replace(new RegExp("{{TABLE_COL_LIST}}", "g") , upperColArr.join() );
 		
 		html = html.replace(new RegExp("{{CONTENT_VALUE_LIST}}", "g") , generateContentValues(propArr) );
